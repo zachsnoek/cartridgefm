@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <!-- Required meta tags -->
+    <meta charset="utf-8">
+
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.5.3/dist/css/bootstrap.min.css" integrity="sha384-TX8t27EcRE3e/ihU7zmQxVncDAy5uIKz4rEkgIXeMed4M0jlfIDPvg6uqKI2xXr2" crossorigin="anonymous">
+    <link rel="stylesheet" href="https://static.fontawesome.com/css/fontawesome-app.css">
+    <script src="https://kit.fontawesome.com/dab3e95661.js" crossorigin="anonymous"></script>
+
+    <title>cartridgefm.com</title>
+  </head>
+  <body>
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js" integrity="sha384-DfXdz2htPH0lsSSs5nCTpuj/zy4C+OGpamoFVy38MVBnE+IbbVYUew+OrCXaRkfj" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.5.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-ho+j7jyWK8fNQe+A12Hb8AhRq26LrZ/JpcUGGOn+Y7RsweNrtN/tE3MoK7ZeZDyx" crossorigin="anonymous"></script>
+    <audio id ="source" autoplay="true">
+      <source id="stream" type="audio/ogg"></audio>
+   </audio>
+    <canvas class="row mx-auto" id="audio_visual" height="288" width="320" style="border: 5px solid gray; border-radius:2px; background: white;"></canvas>
+
+   <div class="card mx-auto mt-4" style="width: 18rem;">
+      <div style = "text-align: center;">
+         <div class="card-header">
+            <h3>Now Playing:</h3>
+         </div>
+         <div class="card-body">
+            <p class="card-text" id="songinfo"></p>
+            <button class="btn btn-success" id="pausebuttonelement" onclick="pause()"><i class="fas fa-play"></i> Play</button>
+            <a href="https://twitter.com/cartridge_fm" target="_blank"><button class="btn btn-info"><i class="fab fa-twitter"></i> Twitter</button></a>
+         </div>
+      </div>
+   </div>
+
+   
+   <script>
+      let sitetitle = "cartridgefm.com";
+
+      let streamurl = "http://cartridgefm.com:8000/gba-radio.ogg";
+      let statusjsonurl = "http://cartridgefm.com:8000/status-json.xsl";
+
+      let color0 = "#1C1C1C";
+      let color1 = "#4D513C";
+      let color2 = "#8A966D";
+      let color3 = "#C7CFA2";
+
+      let verticalBars = 48;
+      let horizontalBars = 32;
+
+      let boxwidth = 288;
+      let boxheight = 320;
+
+      let canvas = document.getElementById("audio_visual");
+      let pauseButton = document.getElementById("pausebuttonelement");
+      let audioElement = document.getElementById("source");
+      let stream = document.getElementById("stream");
+      let songinfo = document.getElementById("songinfo");
+
+      pauseButton.checked = false;
+      canvas.style.background = color3;
+      canvas.style.borderColor = color1;
+      canvas.width = boxwidth;
+      canvas.height = boxheight;
+      canvas.style.webkitFilter = "blur(1px)";
+
+      let ctx = canvas.getContext("2d");
+      
+      audioElement.crossOrigin = "anonymous";
+      let pseudorandom = Math.random().toString(36).substring(7);
+      stream.src = streamurl + "?hash=" + pseudorandom;
+      
+      let audioCtx = new AudioContext();
+      let analyser = audioCtx.createAnalyser();
+      analyser.smoothingTimeConstant = .5;
+      analyser.fftSize = horizontalBars;
+
+      let source = audioCtx.createMediaElementSource(audioElement);
+      source.connect(analyser);
+      source.connect(audioCtx.destination);
+      let data = new Uint8Array(analyser.frequencyBinCount);
+
+      requestAnimationFrame(loopingFunction);
+
+      var intervalID = window.setInterval(updateMetadata, 10000);
+      updateMetadata();
+
+      // ---------------------------
+
+      function updateMetadata() {
+         fetch(statusjsonurl)
+            .then(function (response) {
+               return response.json();
+            })
+            .then(function (myJson) {
+               songinfo.innerHTML = myJson.icestats.source.title;
+            })
+            .catch(function (error) {
+               console.log("Error: " + error);
+            });
+      }
+
+      pauseButton.onclick = function() {
+         audioCtx.resume();
+         if ( !audioElement.paused ) {
+            audioElement.pause();
+         } else {
+            audioElement.play();
+         }
+      };
+
+      audioElement.onplay = (event) => {
+         pauseButton.classList.add("btn-danger");
+         pauseButton.classList.remove("btn-success");
+         pauseButton.innerHTML = "<i class='fas fa-stop'></i>  Pause";
+      };
+
+      audioElement.onpause = (event) => {
+         pauseButton.classList.add("btn-success");
+         pauseButton.classList.remove("btn-danger");
+         pauseButton.innerHTML = "<i class='fas fa-play'></i>  Play";
+      };
+
+      function loopingFunction(){
+         requestAnimationFrame(loopingFunction);
+         analyser.getByteFrequencyData(data);
+         draw(data);
+      }
+
+      function draw(data){
+         ctx.msImageSmoothingEnabled = false;
+         ctx.mozImageSmoothingEnabled = false;
+         ctx.webkitImageSmoothingEnabled = false;
+         ctx.imageSmoothingEnabled = false;
+
+         data = [...data];
+         ctx.clearRect(0,0,canvas.width,canvas.height); //x,y,width,height
+         ctx.fillStyle = color1;
+         ctx.font = '32px serif';
+         ctx.fillText(sitetitle, 10, 50);
+         let space = canvas.width / data.length;
+
+         data.forEach((value,i)=>{
+
+            for (let index = 0; index < verticalBars; index+=2) {
+               if (value / (canvas.height * 1.5) > index / verticalBars){
+                  ctx.fillStyle = color1;
+                  ctx.beginPath();
+                  ctx.rect(space*i + space / 2, canvas.height - 5 * index - space, space - 2, space / 2 - 2);
+                  ctx.fill();
+               }
+            }
+
+         });
+      }
+   </script>
+</body>
+
+</html>
