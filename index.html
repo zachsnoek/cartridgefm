@@ -30,7 +30,7 @@
    </audio>
     <canvas class="row mx-auto" id="audio_visual" height="288" width="320" style="border: 5px solid gray; border-radius:2px; background: white;"></canvas>
 
-   <div class="card mx-auto mt-4" style="width: 18rem;">
+   <div id="maincard" class="card mx-auto mt-4" style="width: 18rem;">
       <div style = "text-align: center;">
          <div class="card-header">
             <h3>Now Playing:</h3>
@@ -40,9 +40,6 @@
             <button class="btn btn-success" id="pausebuttonelement" onclick="pause()"><i class="fas fa-play"></i> Play</button>
             <a href="https://twitter.com/cartridge_fm" target="_blank"><button class="btn btn-info"><i class="fab fa-twitter"></i> Twitter</button></a>
          </div>
-      </div>
-      <div class="card-footer text-muted">
-         Please use in Chrome or Firefox
       </div>
    </div>
 
@@ -69,6 +66,7 @@
       let audioElement = document.getElementById("source");
       let stream = document.getElementById("stream");
       let songinfo = document.getElementById("songinfo");
+      var maincard = document.getElementById("maincard");
 
       pauseButton.checked = false;
       canvas.style.background = color3;
@@ -83,17 +81,25 @@
       let pseudorandom = Math.random().toString(36).substring(7);
       stream.src = streamurl + "?hash=" + pseudorandom;
       
-      let audioCtx = new AudioContext();
-      let analyser = audioCtx.createAnalyser();
-      analyser.smoothingTimeConstant = .5;
-      analyser.fftSize = horizontalBars;
+      if (window.AudioContext || false){
+         var audioCtx = new AudioContext();
+         var analyser = audioCtx.createAnalyser();
+         analyser.smoothingTimeConstant = .5;
+         analyser.fftSize = horizontalBars;
 
-      let source = audioCtx.createMediaElementSource(audioElement);
-      source.connect(analyser);
-      source.connect(audioCtx.destination);
-      let data = new Uint8Array(analyser.frequencyBinCount);
+         var source = audioCtx.createMediaElementSource(audioElement);
+         source.connect(analyser);
+         source.connect(audioCtx.destination);
+         var data = new Uint8Array(analyser.frequencyBinCount);
 
-      requestAnimationFrame(loopingFunction);
+         requestAnimationFrame(loopingFunction);
+      } else {
+         let gbImg  = document.createElement("span");
+         gbImg.innerHTML = "<img src='logo.png' class='' style='display:block;margin-left:auto;margin-right:auto;'></img>";
+         maincard.prepend(gbImg);
+         canvas.remove();
+      }
+      
 
       var intervalID = window.setInterval(updateMetadata, 10000);
       updateMetadata();
@@ -114,7 +120,9 @@
       }
 
       pauseButton.onclick = function() {
-         audioCtx.resume();
+         if (audioCtx){
+            audioCtx.resume();
+         }
          if ( !audioElement.paused ) {
             audioElement.pause();
          } else {
