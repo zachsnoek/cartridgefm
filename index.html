@@ -37,6 +37,9 @@
          </div>
          <div class="card-body">
             <p class="card-text" id="songinfo"></p>
+            <div class="mb-3">
+                <input type="range" id="volume-slider" min="-1" max="1" value="0.5" step="0.01"/>
+            </div>
             <button class="btn btn-success" id="pausebuttonelement" onclick="pause()"><i class="fas fa-play"></i> Play</button>
             <a href="https://twitter.com/cartridge_fm" target="_blank"><button class="btn btn-info"><i class="fab fa-twitter"></i> Twitter</button></a>
          </div>
@@ -67,6 +70,7 @@
       let stream = document.getElementById("stream");
       let songinfo = document.getElementById("songinfo");
       var maincard = document.getElementById("maincard");
+      const volumeSlider = document.getElementById("volume-slider")
 
       pauseButton.checked = false;
       canvas.style.background = color3;
@@ -80,7 +84,7 @@
       audioElement.crossOrigin = "anonymous";
       let pseudorandom = Math.random().toString(36).substring(7);
       stream.src = streamurl + "?hash=" + pseudorandom;
-      
+
       if (window.AudioContext || false){
          var audioCtx = new AudioContext();
          var analyser = audioCtx.createAnalyser();
@@ -90,6 +94,11 @@
          var source = audioCtx.createMediaElementSource(audioElement);
          source.connect(analyser);
          source.connect(audioCtx.destination);
+         
+         var gainNode = audioCtx.createGain();
+         gainNode.gain.value = 0.5;
+         source.connect(gainNode);
+
          var data = new Uint8Array(analyser.frequencyBinCount);
 
          requestAnimationFrame(loopingFunction);
@@ -141,6 +150,12 @@
          pauseButton.classList.remove("btn-danger");
          pauseButton.innerHTML = "<i class='fas fa-play'></i>  Play";
       };
+
+      volumeSlider.oninput = (event) => {
+         gainNode.gain.value = event.target.value
+         gainNode.connect(audioCtx.destination)
+         source.connect(gainNode);
+      }
 
       function loopingFunction(){
          requestAnimationFrame(loopingFunction);
